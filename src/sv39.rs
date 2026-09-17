@@ -1,17 +1,58 @@
+use core::arch::asm;
+
+use crate::satp::Satp;
+
 #[derive(Debug)]
 #[repr(align(4096))]
 pub struct PageTable([PageTableEntry; 512]);
 
 impl PageTable {
-    pub fn new() -> Self {
-        Self(unsafe { core::mem::zeroed() })
+    pub const fn empty() -> Self {
+        Self([const { PageTableEntry::empty() }; 512])
+    }
+
+    pub unsafe fn from_ptr<'a>(ptr: *mut PageTable) -> &'a mut PageTable {
+        unsafe { &mut *(ptr) }
+    }
+
+    pub fn ppn(&self) -> u64 {
+        (self.0.as_ptr() as u64) >> 12
+    }
+
+    pub fn load(&self, asid: u16) {
+        let satp = Satp {
+            mode: crate::satp::PagingMode::Sv39,
+            asid,
+            ppn: self.ppn(),
+        };
+
+        satp.write_csr();
+
+        unsafe {
+            // TODO(Juanperias): Impl selective sfence.vma
+            asm!(
+                "sfence.vma"
+            );
+        }
+    }
+
+    pub fn entry(&self, num: usize) -> Option<&PageTableEntry> {
+        self.0.get(num)
+    }
+
+    pub fn entry_mut(&mut self, num: usize) -> Option<&mut PageTableEntry> {
+        self.0.get_mut(num)
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
+    pub const fn empty() -> PageTableEntry {
+        PageTableEntry(0)
+    }
     pub fn ext(&self) -> Ext {
         let napot = (self.0 >> 63) & 1;
 

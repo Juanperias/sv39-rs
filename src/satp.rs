@@ -7,6 +7,12 @@ pub fn csrr_satp() -> u64 {
     value
 }
 
+pub fn csrw_satp(val: u64) {
+    unsafe {
+        core::arch::asm!("csrw satp, {}", in(reg) val);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Satp {
     pub mode: PagingMode,
@@ -29,8 +35,20 @@ impl Satp {
         }
     }
 
-    pub fn write() {
-        todo!()
+    pub fn encode(&self) -> u64 {
+        let mode: u8 = self.mode.clone().into();
+
+        let mode = mode as u64;
+        let satp = 
+            ((mode << 60) & 0xF) |
+            (((self.asid as u64) << 44) & 0xFFFF) |
+            self.ppn & 0xFFFFFFFFFFF;
+
+        satp
+    }
+
+    pub fn write_csr(&self) {
+        csrw_satp(self.encode());
     }
 }
 
