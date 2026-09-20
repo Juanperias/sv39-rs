@@ -90,10 +90,13 @@ impl PageTableEntry {
     pub fn rsw(&self) -> u8 {
         ((self.0 >> 8) & 3) as u8
     }
-    pub fn flags(&self) {
+    pub fn is_valid(&self) -> bool {
+        self.flags().contains(PageFlags::V)
+    }
+    pub fn flags(&self) -> PageFlags {
         let flags = ((self.0) & 0xFF) as u8;
 
-        PageFlags::from_bits_retain(flags);
+        PageFlags::from_bits_retain(flags)
     }
 }
 
