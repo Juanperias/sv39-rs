@@ -15,15 +15,11 @@ impl PageTable {
         unsafe { &mut *(ptr) }
     }
 
-    pub fn ppn(&self) -> u64 {
-        (self.0.as_ptr() as u64) >> 12
-    }
-
-    pub fn load(&self, asid: u16) {
+    pub fn load_with_phys(&self, p_addr: PhysAddr, asid: u16) {
         let satp = Satp {
             mode: crate::satp::PagingMode::Sv39,
             asid,
-            ppn: self.ppn(),
+            ppn: p_addr.0 >> 12,
         };
 
         satp.write_csr();
@@ -34,6 +30,7 @@ impl PageTable {
                 "sfence.vma"
             );
         }
+
     }
 
     pub fn entry(&self, num: usize) -> Option<&PageTableEntry> {
@@ -68,6 +65,16 @@ impl PageTableEntry {
     pub const fn empty() -> PageTableEntry {
         PageTableEntry(0)
     }
+
+    pub fn set_phys(&mut self, addr: PhysAddr) {
+        let inner_ppn = 
+            (addr.ppn_2() << 28) |
+            (addr.ppn_1() << 19) |
+            (addr.ppn_0() << 10);
+
+        self.0 = (self.0 & 0xFFC00000000003FF) | inner_ppn;
+    }
+
     pub fn ext(&self) -> Ext {
         let napot = (self.0 >> 63) & 1;
 
