@@ -121,16 +121,16 @@ pub struct VirtAddr(pub u64);
 impl VirtAddr {
     pub fn new(addr: u64) -> Result<Self, Sv39Error> {
          if (addr & 0xFFF) != 0 {
-            return Sv39Error::MisalignedAddr(addr);
+            return Err(Sv39Error::MisalignedAddr(addr));
          }
 
          
          if (((addr as i64) << 25) >> 25) != addr as i64 {
-            return Sv39Error::InvalidAddr(addr);
+            return Err(Sv39Error::InvalidAddr(addr));
          }
 
 
-         Self(addr)
+         Ok(Self(addr))
     }
 
     pub unsafe fn new_unchecked(addr: u64) -> Self {
@@ -141,15 +141,15 @@ impl VirtAddr {
         (self.0 >> 30) & 0x1FF
     }
     
-    pub fn vpn_1(&self) -> usize {
+    pub fn vpn_1(&self) -> u64 {
         (self.0 >> 21) & 0x1FF
     }
 
-    pub fn vpn_0(&self) -> usize {
+    pub fn vpn_0(&self) -> u64 {
         (self.0 >> 12) & 0x1FF
     }
 
-    pub fn page_offset(&self) -> usize {
+    pub fn page_offset(&self) -> u64 {
         self.0 & 0xFFF
     }
 }
