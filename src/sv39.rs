@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::satp::Satp;
+use crate::{error::Sv39Error, satp::Satp};
 
 #[derive(Debug)]
 #[repr(align(4096))]
@@ -50,6 +50,21 @@ impl PageTable {
 pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
+    pub fn new(phys: PhysAddr, rsw: u8, flags: PageFlags) -> PageTableEntry {
+        let inner = 
+            (phys.ppn_2() << 28) |
+            (phys.ppn_1() << 19) |
+            (phys.ppn_0() << 10) |
+            (((rsw as u64) & 0x3) << 8) |
+            (flags.bits() as u64) & 0xFF;
+
+        PageTableEntry(inner)
+    }
+
+    pub fn with_ext() {
+        todo!()
+    }
+
     pub const fn empty() -> PageTableEntry {
         PageTableEntry(0)
     }
@@ -86,17 +101,17 @@ impl PageTableEntry {
 pub struct PhysAddr(pub u64);
 
 impl PhysAddr {
-    pub fn ppn_2(&self) -> usize {
-        ((self.0 >> 30) & 0x3FFFFFF) as usize
+    pub fn ppn_2(&self) -> u64 {
+        (self.0 >> 30) & 0x3FFFFFF
     }
-    pub fn ppn_1(&self) -> usize {
-        ((self.0 >> 21) & 0x1FF) as usize
+    pub fn ppn_1(&self) -> u64 {
+        (self.0 >> 21) & 0x1FF
     }
-    pub fn ppn_0(&self) -> usize {
-        ((self.0 >> 9) & 0x1FF) as usize
+    pub fn ppn_0(&self) -> u64 {
+        (self.0 >> 9) & 0x1FF
     }
-    pub fn page_offset(&self) -> usize {
-        (self.0 & 0xFFF) as usize
+    pub fn page_offset(&self) -> u64 {
+        self.0 & 0xFFF
     }
 }
 
@@ -104,26 +119,44 @@ impl PhysAddr {
 pub struct VirtAddr(pub u64);
 
 impl VirtAddr {
-    pub fn vpn_2(&self) -> usize {
-        ((self.0 >> 30) & 0x1FF) as usize
+    pub fn new(addr: u64) -> Result<Self, Sv39Error> {
+         if (addr & 0xFFF) != 0 {
+            return Sv39Error::MisalignedAddr(addr);
+         }
+
+         
+         if (((addr as i64) << 25) >> 25) != addr as i64 {
+            return Sv39Error::InvalidAddr(addr);
+         }
+
+
+         Self(addr)
+    }
+
+    pub unsafe fn new_unchecked(addr: u64) -> Self {
+        Self(addr)
+    }
+    
+    pub fn vpn_2(&self) -> u64 {
+        (self.0 >> 30) & 0x1FF
     }
     
     pub fn vpn_1(&self) -> usize {
-        ((self.0 >> 21) & 0x1FF) as usize
+        (self.0 >> 21) & 0x1FF
     }
 
     pub fn vpn_0(&self) -> usize {
-        ((self.0 >> 12) & 0x1FF) as usize
+        (self.0 >> 12) & 0x1FF
     }
 
     pub fn page_offset(&self) -> usize {
-        (self.0 & 0xFFF) as usize
+        self.0 & 0xFFF
     }
 }
 
 
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Ext {
     napot: u8,
     pbmt: u8,

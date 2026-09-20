@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 bitflags = "2.13.2"
+thiserror = "2.0.20"
