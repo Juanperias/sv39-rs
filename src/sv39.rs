@@ -75,6 +75,12 @@ impl PageTableEntry {
         self.0 = (self.0 & 0xFFC00000000003FF) | inner_ppn;
     }
 
+    pub fn set_flags(&mut self, flags: PageFlags) {
+        let inner = (self.0 & 0xFFFFFFFFFFFFFF00) | (flags.bits() & 0xFF) as u64;
+    
+        self.0 = inner;
+    }
+
     pub fn ext(&self) -> Ext {
         let napot = (self.0 >> 63) & 1;
 
