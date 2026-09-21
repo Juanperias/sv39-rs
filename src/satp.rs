@@ -7,6 +7,7 @@ pub fn csrr_satp() -> u64 {
     value
 }
 
+#[inline(always)]
 pub fn csrw_satp(val: u64) {
     unsafe {
         core::arch::asm!("csrw satp, {}", in(reg) val);
