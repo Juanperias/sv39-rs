@@ -1,17 +1,19 @@
-#[inline(always)]
-pub fn csrr_satp() -> u64 {
-    let mut value: u64;
-    unsafe {
-        ::core::arch::asm!("csrr {}, satp", out(reg) value);
-    }
-    value
+#[unsafe(no_mangle)]
+#[unsafe(naked)]
+pub extern "C" fn csrr_satp() -> u64 {
+    core::arch::naked_asm!(
+            "csrr a0, satp",
+            "ret"
+    ); 
 }
 
-#[inline(always)]
-pub fn csrw_satp(val: u64) {
-    unsafe {
-        core::arch::asm!("csrw satp, {}", in(reg) val);
-    }
+#[unsafe(no_mangle)]
+#[unsafe(naked)]
+pub extern "C" fn csrw_satp(val: u64) {
+    core::arch::naked_asm!(
+        "csrw satp, a0",
+        "ret",
+    );
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -40,9 +42,10 @@ impl Satp {
         let mode: u8 = self.mode.clone().into();
 
         let mode = mode as u64;
+
         let satp = 
-            ((mode << 60) & 0xF) |
-            (((self.asid as u64) << 44) & 0xFFFF) |
+            ((mode & 0xF) << 60) |
+            (((self.asid as u64) & 0xFFFF) << 44) |
             self.ppn & 0xFFFFFFFFFFF;
 
         satp

@@ -15,6 +15,14 @@ impl PageTable {
         unsafe { &mut *(ptr) }
     }
 
+    pub const fn as_ptr(&self) -> *const PageTableEntry {
+        self.0.as_ptr()
+    }
+
+    pub const fn as_mut_ptr(&mut self) -> *mut PageTableEntry {
+        self.0.as_mut_ptr()
+    }
+
     pub fn load_with_phys(&self, p_addr: PhysAddr, asid: u16) {
         let satp = Satp {
             mode: crate::satp::PagingMode::Sv39,
