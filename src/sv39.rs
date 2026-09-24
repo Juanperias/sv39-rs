@@ -99,14 +99,14 @@ impl PageTableEntry {
             napot: napot as u8,
         }
     }
-    pub fn ppn_2(&self) -> usize {
-        ((self.0 >> 28) & 0x3FFFFFF) as usize
+    pub fn ppn_2(&self) -> u64 {
+        (self.0 >> 28) & 0x3FFFFFF
     }
-    pub fn ppn_1(&self) -> usize {
-        ((self.0 >> 19) & 0x1FF) as usize
+    pub fn ppn_1(&self) -> u64 {
+        (self.0 >> 19) & 0x1FF
     }
-    pub fn ppn_0(&self) -> usize {
-        ((self.0 >> 10) & 0x1FF) as usize
+    pub fn ppn_0(&self) -> u64 {
+        (self.0 >> 10) & 0x1FF
     }
     pub fn rsw(&self) -> u8 {
         ((self.0 >> 8) & 3) as u8
@@ -125,6 +125,28 @@ impl PageTableEntry {
 pub struct PhysAddr(pub u64);
 
 impl PhysAddr {
+    pub fn new(addr: u64) -> Result<PhysAddr, Sv39Error> {
+        if (addr & 0xFFF) != 0 {
+          return Err(Sv39Error::MisalignedAddr(addr));
+        }
+
+        Ok(PhysAddr(addr))
+    }
+
+    pub unsafe fn new_unchecked(addr: u64) -> PhysAddr {
+        PhysAddr(addr)
+    }
+
+    pub unsafe fn from_parts(ppn_2: u64, ppn_1: u64, ppn_0: u64, page_offset: u16) -> PhysAddr {
+        let inner = 
+            (ppn_2 << 30) |
+            (ppn_1 << 21) |
+            (ppn_0 << 12) |
+            ((page_offset as u64) & 0xFFF);
+
+        PhysAddr(inner)
+    }
+    
     pub fn ppn_2(&self) -> u64 {
         (self.0 >> 30) & 0x3FFFFFF
     }
