@@ -99,6 +99,11 @@ impl PageTableEntry {
             napot: napot as u8,
         }
     }
+    
+    pub fn phys_addr(&self) -> PhysAddr {
+        unsafe { PhysAddr::from_parts(self.ppn_2(), self.ppn_1(), self.ppn_0(), 0) }
+    }
+
     pub fn ppn_2(&self) -> u64 {
         (self.0 >> 28) & 0x3FFFFFF
     }
