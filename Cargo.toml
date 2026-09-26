@@ -3,6 +3,9 @@ name = "sv39"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = [ "dummy-kernel" ]
+
 [dependencies]
 bitflags = "2.13.2"
 thiserror = { version = "2.0.20", default-features = false }

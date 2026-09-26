@@ -12,7 +12,7 @@ impl PageTable {
     }
 
     pub unsafe fn from_ptr<'a>(ptr: *mut PageTable) -> &'a mut PageTable {
-        unsafe { &mut *(ptr) }
+        unsafe { &mut *ptr }
     }
 
     pub const fn as_ptr(&self) -> *const PageTableEntry {
@@ -34,11 +34,8 @@ impl PageTable {
 
         unsafe {
             // TODO(Juanperias): Impl selective sfence.vma
-            asm!(
-                "sfence.vma"
-            );
+            asm!("sfence.vma zero, zero");
         }
-
     }
 
     pub fn entry(&self, num: usize) -> Option<&PageTableEntry> {
@@ -56,12 +53,11 @@ pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
     pub fn new(phys: PhysAddr, rsw: u8, flags: PageFlags) -> PageTableEntry {
-        let inner = 
-            (phys.ppn_2() << 28) |
-            (phys.ppn_1() << 19) |
-            (phys.ppn_0() << 10) |
-            (((rsw as u64) & 0x3) << 8) |
-            (flags.bits() as u64) & 0xFF;
+        let inner = (phys.ppn_2() << 28)
+            | (phys.ppn_1() << 19)
+            | (phys.ppn_0() << 10)
+            | (((rsw as u64) & 0x3) << 8)
+            | (flags.bits() as u64) & 0xFF;
 
         PageTableEntry(inner)
     }
@@ -75,17 +71,14 @@ impl PageTableEntry {
     }
 
     pub fn set_phys(&mut self, addr: PhysAddr) {
-        let inner_ppn = 
-            (addr.ppn_2() << 28) |
-            (addr.ppn_1() << 19) |
-            (addr.ppn_0() << 10);
+        let ppn = addr.0 >> 12;
 
-        self.0 = (self.0 & 0xFFC00000000003FF) | inner_ppn;
+        self.0 = (self.0 & 0xFFC00000000003FF) | (ppn << 10);
     }
 
     pub fn set_flags(&mut self, flags: PageFlags) {
         let inner = (self.0 & 0xFFFFFFFFFFFFFF00) | (flags.bits() & 0xFF) as u64;
-    
+
         self.0 = inner;
     }
 
@@ -99,7 +92,7 @@ impl PageTableEntry {
             napot: napot as u8,
         }
     }
-    
+
     pub fn phys_addr(&self) -> PhysAddr {
         unsafe { PhysAddr::from_parts(self.ppn_2(), self.ppn_1(), self.ppn_0(), 0) }
     }
@@ -132,7 +125,7 @@ pub struct PhysAddr(pub u64);
 impl PhysAddr {
     pub fn new(addr: u64) -> Result<PhysAddr, Sv39Error> {
         if (addr & 0xFFF) != 0 {
-          return Err(Sv39Error::MisalignedAddr(addr));
+            return Err(Sv39Error::MisalignedAddr(addr));
         }
 
         Ok(PhysAddr(addr))
@@ -143,15 +136,11 @@ impl PhysAddr {
     }
 
     pub unsafe fn from_parts(ppn_2: u64, ppn_1: u64, ppn_0: u64, page_offset: u16) -> PhysAddr {
-        let inner = 
-            (ppn_2 << 30) |
-            (ppn_1 << 21) |
-            (ppn_0 << 12) |
-            ((page_offset as u64) & 0xFFF);
+        let inner = (ppn_2 << 30) | (ppn_1 << 21) | (ppn_0 << 12) | ((page_offset as u64) & 0xFFF);
 
         PhysAddr(inner)
     }
-    
+
     pub fn ppn_2(&self) -> u64 {
         (self.0 >> 30) & 0x3FFFFFF
     }
@@ -171,27 +160,25 @@ pub struct VirtAddr(pub u64);
 
 impl VirtAddr {
     pub fn new(addr: u64) -> Result<Self, Sv39Error> {
-         if (addr & 0xFFF) != 0 {
+        if (addr & 0xFFF) != 0 {
             return Err(Sv39Error::MisalignedAddr(addr));
-         }
+        }
 
-         
-         if (((addr as i64) << 25) >> 25) != addr as i64 {
+        if (((addr as i64) << 25) >> 25) != addr as i64 {
             return Err(Sv39Error::InvalidAddr(addr));
-         }
+        }
 
-
-         Ok(Self(addr))
+        Ok(Self(addr))
     }
 
     pub unsafe fn new_unchecked(addr: u64) -> Self {
         Self(addr)
     }
-    
+
     pub fn vpn_2(&self) -> u64 {
         (self.0 >> 30) & 0x1FF
     }
-    
+
     pub fn vpn_1(&self) -> u64 {
         (self.0 >> 21) & 0x1FF
     }
@@ -205,8 +192,6 @@ impl VirtAddr {
     }
 }
 
-
-
 #[derive(Debug, Default)]
 pub struct Ext {
     napot: u8,
@@ -216,13 +201,13 @@ pub struct Ext {
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct PageFlags: u8 {
-        const V = 0x0;
-        const R = 0x1;
-        const W = 0x3;
-        const X = 0x7;
-        const U = 0xF;
-        const G = 0x1F;
-        const A = 0x3f;
-        const D = 0x7F;
+        const V = 1 << 0;
+        const R = 1 << 1;
+        const W = 1 << 2;
+        const X = 1 << 3;
+        const U = 1 << 4;
+        const G = 1 << 5;
+        const A = 1 << 6;
+        const D = 1 << 7;
     }
 }

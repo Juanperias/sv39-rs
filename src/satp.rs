@@ -1,19 +1,13 @@
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
 pub extern "C" fn csrr_satp() -> u64 {
-    core::arch::naked_asm!(
-            "csrr a0, satp",
-            "ret"
-    ); 
+    core::arch::naked_asm!("csrr a0, satp", "ret");
 }
 
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
 pub extern "C" fn csrw_satp(val: u64) {
-    core::arch::naked_asm!(
-        "csrw satp, a0",
-        "ret",
-    );
+    core::arch::naked_asm!("csrw satp, a0", "ret",);
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -43,10 +37,8 @@ impl Satp {
 
         let mode = mode as u64;
 
-        let satp = 
-            ((mode & 0xF) << 60) |
-            (((self.asid as u64) & 0xFFFF) << 44) |
-            self.ppn & 0xFFFFFFFFFFF;
+        let satp =
+            ((mode & 0xF) << 60) | (((self.asid as u64) & 0xFFFF) << 44) | self.ppn & 0xFFFFFFFFFFF;
 
         satp
     }
@@ -55,7 +47,6 @@ impl Satp {
         csrw_satp(self.encode());
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum PagingMode {
@@ -67,9 +58,9 @@ pub enum PagingMode {
 impl From<u8> for PagingMode {
     fn from(value: u8) -> Self {
         match value {
-             0 => Self::Bare,
-             8 => Self::Sv39,
-             _ => Self::Unk(value),
+            0 => Self::Bare,
+            8 => Self::Sv39,
+            _ => Self::Unk(value),
         }
     }
 }
