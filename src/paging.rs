@@ -62,8 +62,19 @@ impl PageTableEntry {
         PageTableEntry(inner)
     }
 
-    pub fn with_ext() {
-        todo!()
+    pub fn with_ext(ext: Ext, phys: PhysAddr, rsw: u8, flags: PageFlags) -> PageTableEntry {
+        let napot = (ext.napot & 1) as u64;
+        let pbmt = (ext.pbmt & 3) as u64;
+
+        let inner = napot << 63
+            | pbmt << 61
+            | (phys.ppn_2() << 28)
+            | (phys.ppn_1() << 19)
+            | (phys.ppn_0() << 10)
+            | (((rsw as u64) & 0x3) << 8)
+            | (flags.bits() as u64) & 0xFF;
+
+        PageTableEntry(inner) 
     }
 
     pub const fn empty() -> PageTableEntry {
