@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use sv39::sv39::{PageFlags, PageTable, PhysAddr, VirtAddr};
+use sv39::paging::{PageFlags, PageTable, PhysAddr, VirtAddr};
 
 pub mod alloc;
 
@@ -46,7 +46,7 @@ pub extern "C" fn boot() -> ! {
 
        println!("Paging loaded! 1:1 mapping is here");
 
-     core::arch::asm!("j main", in("a0") level_2_page_table, options(noreturn));
+       core::arch::asm!("j main", in("a0") level_2_page_table, options(noreturn));
     }
 }
 

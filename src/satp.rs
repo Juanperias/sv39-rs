@@ -1,12 +1,14 @@
+use crate::paging::PagingMode;
+
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
-pub extern "C" fn csrr_satp() -> u64 {
+extern "C" fn csrr_satp() -> u64 {
     core::arch::naked_asm!("csrr a0, satp", "ret");
 }
 
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
-pub extern "C" fn csrw_satp(val: u64) {
+extern "C" fn csrw_satp(val: u64) {
     core::arch::naked_asm!("csrw satp, a0", "ret",);
 }
 
@@ -45,32 +47,5 @@ impl Satp {
 
     pub fn write_csr(&self) {
         csrw_satp(self.encode());
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum PagingMode {
-    Bare,
-    Sv39,
-    Unk(u8),
-}
-
-impl From<u8> for PagingMode {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => Self::Bare,
-            8 => Self::Sv39,
-            _ => Self::Unk(value),
-        }
-    }
-}
-
-impl Into<u8> for PagingMode {
-    fn into(self) -> u8 {
-        match self {
-            PagingMode::Bare => 0,
-            PagingMode::Sv39 => 8,
-            PagingMode::Unk(v) => v,
-        }
     }
 }

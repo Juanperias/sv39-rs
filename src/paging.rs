@@ -25,7 +25,7 @@ impl PageTable {
 
     pub fn load_with_phys(&self, p_addr: PhysAddr, asid: u16) {
         let satp = Satp {
-            mode: crate::satp::PagingMode::Sv39,
+            mode: PagingMode::Sv39,
             asid,
             ppn: p_addr.0 >> 12,
         };
@@ -209,5 +209,32 @@ bitflags::bitflags! {
         const G = 1 << 5;
         const A = 1 << 6;
         const D = 1 << 7;
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub enum PagingMode {
+    Bare,
+    Sv39,
+    Unk(u8),
+}
+
+impl From<u8> for PagingMode {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Self::Bare,
+            8 => Self::Sv39,
+            _ => Self::Unk(value),
+        }
+    }
+}
+
+impl Into<u8> for PagingMode {
+    fn into(self) -> u8 {
+        match self {
+            PagingMode::Bare => 0,
+            PagingMode::Sv39 => 8,
+            PagingMode::Unk(v) => v,
+        }
     }
 }
