@@ -11,13 +11,12 @@ impl Page {
         Self(addr)
     }
 
-    // TODO(Juanperias): This TERRIBLE and ugly, make a huge change of how VirtAddr is managed. PLEASE
     pub fn as_mut_ptr(&self) -> *mut u8 {
-        self.0.0 as *mut u8
+        self.0.addr() as *mut u8
     }
 
     pub fn as_ptr(&self) -> *const u8 {
-        self.0.0 as *const u8
+        self.0.addr() as *const u8
     }
     
 }
