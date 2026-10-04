@@ -1,6 +1,6 @@
 use crate::page::PhysFrame;
 
 pub trait PhysFrameAllocator {
-    pub fn alloc(&self) -> Option<PhysFrame>;
-    pub fn free(&self, frame: PhysFrame);
+    fn alloc(&self) -> Option<PhysFrame>;
+    fn free(&self, frame: PhysFrame);
 }

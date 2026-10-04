@@ -131,7 +131,7 @@ impl PageTableEntry {
 }
 
 #[derive(Debug)]
-pub struct PhysAddr(pub u64);
+pub struct PhysAddr(u64);
 
 impl PhysAddr {
     pub fn new(addr: u64) -> Result<PhysAddr, Sv39Error> {
@@ -146,6 +146,11 @@ impl PhysAddr {
         PhysAddr(addr)
     }
 
+
+    pub const fn addr(&self) -> u64 {
+        self.0
+    }
+    
     pub unsafe fn from_parts(ppn_2: u64, ppn_1: u64, ppn_0: u64, page_offset: u16) -> PhysAddr {
         let inner = (ppn_2 << 30) | (ppn_1 << 21) | (ppn_0 << 12) | ((page_offset as u64) & 0xFFF);
 
@@ -167,7 +172,7 @@ impl PhysAddr {
 }
 
 #[derive(Debug)]
-pub struct VirtAddr(pub u64);
+pub struct VirtAddr(u64);
 
 impl VirtAddr {
     pub fn new(addr: u64) -> Result<Self, Sv39Error> {
@@ -184,6 +189,10 @@ impl VirtAddr {
 
     pub unsafe fn new_unchecked(addr: u64) -> Self {
         Self(addr)
+    }
+
+    pub const fn addr(&self) -> u64 {
+        self.0
     }
 
     pub fn vpn_2(&self) -> u64 {
