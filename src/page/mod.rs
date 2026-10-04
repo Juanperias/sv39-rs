@@ -1,40 +1,36 @@
-use core::marker::PhantomData;
-
-use crate::error::Sv39Error;
+use crate::paging::{PhysAddr, VirtAddr};
 
 pub mod alloc;
 
-pub struct Page<T: PageSize> {
-    ptr: *mut u8,
-    _size: PhantomData<T>,
-}
+// TODO(Juanperias): manage more than 4 KIB pages
 
-impl<T: PageSize> Page<T> {
-    pub fn new(ptr: *mut u8) -> Result<Self, Sv39Error> {
-        if ptr.align_offset(T::SIZE) == 0 {
-            return Ok(Self {
-                ptr,
-                _size: PhantomData,
-            });
-        }
+pub struct Page(VirtAddr);
 
-        return Err(Sv39Error::MisalignedAddr(ptr.addr() as u64))
+impl Page {
+    pub fn new(addr: VirtAddr) -> Self {
+        Self(addr)
     }
 
-    pub unsafe fn new_unchecked(ptr: *mut u8) -> Self {
-        Self { ptr, _size: PhantomData }
-    }
-
+    // TODO(Juanperias): This TERRIBLE and ugly, make a huge change of how VirtAddr is managed. PLEASE
     pub fn as_mut_ptr(&self) -> *mut u8 {
-        self.ptr
+        self.0.0 as *mut u8
     }
 
     pub fn as_ptr(&self) -> *const u8 {
-        self.ptr as *const u8
+        self.0.0 as *const u8
     }
     
 }
 
+pub struct PhysFrame(PhysAddr);
+
+impl PhysFrame {
+    pub fn new(phys: PhysAddr) -> Self {
+        Self(phys)
+    }
+}
+
+/*
 pub trait PageSize {
     const SIZE: usize;
 }
@@ -57,3 +53,5 @@ pub struct Size1Gib;
 impl PageSize for Size1Gib {
     const SIZE: usize = 1 << 30;
 }
+
+*/
