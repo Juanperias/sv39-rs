@@ -1,6 +1,7 @@
 use crate::paging::{PhysAddr, VirtAddr};
 
 pub mod alloc;
+pub mod mapper;
 
 // TODO(Juanperias): manage more than 4 KIB pages
 
@@ -18,6 +19,14 @@ impl Page {
     pub fn as_ptr(&self) -> *const u8 {
         self.0.addr() as *const u8
     }
+
+    pub fn start_address_virt(&self) -> &VirtAddr {
+        &self.0
+    }
+
+    pub fn start_address(&self) -> u64 {
+        self.start_address_virt().addr()
+    }
     
 }
 
@@ -26,6 +35,14 @@ pub struct PhysFrame(PhysAddr);
 impl PhysFrame {
     pub fn new(phys: PhysAddr) -> Self {
         Self(phys)
+    }
+    
+    pub fn start_address_phys(&self) -> &PhysAddr {
+        &self.0
+    }
+
+    pub fn start_address(&self) -> u64 {
+        self.start_address_phys().addr()
     }
 }
 

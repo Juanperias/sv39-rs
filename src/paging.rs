@@ -1,4 +1,4 @@
-use core::arch::asm;
+use core::{arch::asm, ops::Add};
 
 use crate::{error::Sv39Error, satp::Satp};
 
@@ -48,7 +48,7 @@ impl PageTable {
 }
 
 #[repr(transparent)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
@@ -130,7 +130,7 @@ impl PageTableEntry {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PhysAddr(u64);
 
 impl PhysAddr {
@@ -146,6 +146,9 @@ impl PhysAddr {
         PhysAddr(addr)
     }
 
+    pub fn offset(&self, offset: usize) -> Result<PhysAddr, Sv39Error> {
+        Self::new(self.0 + (offset as u64))
+    }
 
     pub const fn addr(&self) -> u64 {
         self.0
@@ -189,6 +192,10 @@ impl VirtAddr {
 
     pub unsafe fn new_unchecked(addr: u64) -> Self {
         Self(addr)
+    }
+
+    pub fn offset(&self, offset: usize) -> Result<VirtAddr, Sv39Error> {
+        Self::new(self.0 + (offset as u64))
     }
 
     pub const fn addr(&self) -> u64 {

@@ -1,3 +1,5 @@
+use sv39::{page::{PhysFrame, alloc::PhysFrameAllocator}, paging::PhysAddr};
+
 unsafe extern "C" {
     static mut __heap: u8;
     static mut __heap_end: u8;
@@ -5,8 +7,11 @@ unsafe extern "C" {
 
 static mut OFFSET: usize = 0;
 
-pub fn alloc_page() -> *mut u8 {
-    let heap_start = (&raw mut __heap).addr();
+pub struct PageAllocator;
+
+impl PhysFrameAllocator for PageAllocator {
+    fn alloc(&self) -> Option<PhysFrame> {
+        let heap_start = (&raw mut __heap).addr();
     let heap_end = (&raw mut __heap_end).addr();
 
     unsafe {
@@ -18,6 +23,9 @@ pub fn alloc_page() -> *mut u8 {
             panic!("OOM");
         }
 
-        ret as *mut u8
+        Some(PhysFrame::new(PhysAddr::new( ret as u64).unwrap()))
     }
+    }
+
+    fn free(&self, p: PhysFrame) {}
 }

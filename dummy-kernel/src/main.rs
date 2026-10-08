@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use sv39::paging::{PageFlags, PageTable, PhysAddr, VirtAddr};
+use sv39::{page::{Page, PhysFrame, alloc::PhysFrameAllocator, mapper::Mapper}, paging::{PageFlags, PageTable, PhysAddr, VirtAddr}};
 
 pub mod alloc;
 
@@ -25,24 +25,30 @@ pub extern "C" fn boot() -> ! {
         let bss_size = (&raw mut __bss_end as usize) - (&raw mut __bss as usize);
         core::ptr::write_bytes(bss_start, 0, bss_size);
 
-        let p = alloc::alloc_page();
+        let mut allocator = alloc::PageAllocator;
+        
+        let p = allocator.alloc().unwrap().start_address_phys().addr();
 
         let level_2_page_table = PageTable::from_ptr(p as *mut PageTable);
 
         let kernel_base = (&raw mut __kernel_base) as u64;
         let heap_end = (&raw mut __heap_end) as u64; // OR KERNEL_END
 
+        let offset_mapper = sv39::page::mapper::OffsetMapper::identity();
+
         for i in (kernel_base..heap_end).step_by(4096) {
-            map(
-                VirtAddr::new(i).unwrap(),
-                PhysAddr::new(i).unwrap(),
+            offset_mapper.map_to(
+                Page::new(VirtAddr::new(i).unwrap()),
+                PhysFrame::new(PhysAddr::new(i).unwrap()),
+                PageFlags::V | PageFlags::W | PageFlags::R | PageFlags::X,
                 level_2_page_table,
-            );
+                &mut allocator,
+            ).unwrap();
         }
 
         println!("Loading paging");
 
-       level_2_page_table.load_with_phys(PhysAddr::new(p.addr() as u64).unwrap(), 0);
+       level_2_page_table.load_with_phys(PhysAddr::new(p).unwrap(), 0);
 
        println!("Paging loaded! 1:1 mapping is here");
 
@@ -50,38 +56,7 @@ pub extern "C" fn boot() -> ! {
     }
 }
 
-pub fn map(v: VirtAddr, phys: PhysAddr, root_table: &mut PageTable) {
-    let entry_2 = root_table.entry_mut(v.vpn_2() as usize).unwrap();
 
-    if !entry_2.is_valid() {
-        println!("Page allocation; Level 1 for VPN 2 {}", v.vpn_2());
-        let p = alloc::alloc_page();
-        entry_2.set_flags(PageFlags::V);
-        entry_2.set_phys(PhysAddr::new(p.addr() as u64).unwrap());
-    }
-
-    let level_1_page = entry_2.phys_addr();
-    let level_1_table = unsafe { PageTable::from_ptr(level_1_page.0 as *mut PageTable) };
-
-    let entry_1 = level_1_table.entry_mut(v.vpn_1() as usize).unwrap();
-
-    if !entry_1.is_valid() {
-        println!("Page allocation; Level 0");
-        let p = alloc::alloc_page();
-        entry_1.set_flags(PageFlags::V);
-        entry_1.set_phys(PhysAddr::new(p.addr() as u64).unwrap());
-    }
-
-    let level_0_page = entry_1.phys_addr();
-    let level_0_table = unsafe { PageTable::from_ptr(level_0_page.0 as *mut PageTable) };
-
-    let entry_0 = level_0_table.entry_mut(v.vpn_0() as usize).unwrap();
-
-    if !entry_0.is_valid() {
-        entry_0.set_flags(PageFlags::V | PageFlags::R | PageFlags::W | PageFlags::X);
-        entry_0.set_phys(phys);
-    }
-}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main(level_2_page_table: *mut PageTable) {

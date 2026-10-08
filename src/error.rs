@@ -7,4 +7,7 @@ pub enum Sv39Error {
 
     #[error("Invalid Address: 0x{0:X}")]
     InvalidAddr(u64),
+
+    #[error("Allocation failed")]
+    AllocationFailed,
 }
