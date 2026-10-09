@@ -2,7 +2,7 @@
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::{error::Sv39Error, page::{Page, PhysFrame, alloc::PhysFrameAllocator}, paging::{PageFlags, PageTable, VirtAddr}};
+use crate::{error::Sv39Error, page::{Page, PhysFrame, alloc::PhysFrameAllocator}, paging::{PageFlags, PageTable, PhysAddr, VirtAddr}};
 
 pub trait Mapper {
     fn map_to<T: PhysFrameAllocator>(
@@ -11,14 +11,14 @@ pub trait Mapper {
         phys: PhysFrame,
 
         flags: PageFlags,
-        level_2_table: &mut PageTable,
+        level_2_table: &PhysFrame,
         allocator: &mut T,
 ) -> Result<(), Sv39Error>;
 
     fn umap(
         &self,
         page: Page,
-        level_2_table: &mut PageTable
+        level_2_table: &PhysFrame,
     ) -> Result<(), Sv39Error>;
 }
 
@@ -48,13 +48,16 @@ impl Mapper for OffsetMapper {
         phys: PhysFrame,
 
         flags: PageFlags,
-        root_table: &mut PageTable,
+        root_table_phys: &PhysFrame,
         allocator: &mut T,
     ) -> Result<(), Sv39Error> {
         let off = self.0.load(Ordering::SeqCst);
         
         let v = page.start_address_virt();
 
+
+        let root_table = unsafe { PageTable::from_ptr((root_table_phys.start_address_phys().offset(off)?.addr()) as *mut PageTable) };
+            
         // This unwrap should be safe, because a VPN is always 9 bits, i think in some point I
         // can change this to an .ok_or but this unwrap dont seem very unsafe
         let entry_2 = root_table.entry_mut(v.vpn_2() as usize).unwrap();
@@ -94,7 +97,7 @@ impl Mapper for OffsetMapper {
     fn umap(
         &self,
         page: Page,
-        level_2_table: &mut PageTable
+        level_2_table: &PhysFrame,
     ) -> Result<(), Sv39Error> {
         todo!()
    }

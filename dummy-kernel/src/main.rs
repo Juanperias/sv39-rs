@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use sv39::{page::{Page, PhysFrame, alloc::PhysFrameAllocator, mapper::Mapper}, paging::{PageFlags, PageTable, PhysAddr, VirtAddr}};
+use sv39::{page::{Page, PhysFrame, alloc::PhysFrameAllocator, mapper::Mapper}, paging::{PageFlags, PageTable, PhysAddr, VirtAddr, load_with_phys}};
 
 pub mod alloc;
 
@@ -27,9 +27,7 @@ pub extern "C" fn boot() -> ! {
 
         let mut allocator = alloc::PageAllocator;
         
-        let p = allocator.alloc().unwrap().start_address_phys().addr();
-
-        let level_2_page_table = PageTable::from_ptr(p as *mut PageTable);
+        let level_2_page_table = allocator.alloc().unwrap();
 
         let kernel_base = (&raw mut __kernel_base) as u64;
         let heap_end = (&raw mut __heap_end) as u64; // OR KERNEL_END
@@ -41,18 +39,18 @@ pub extern "C" fn boot() -> ! {
                 Page::new(VirtAddr::new(i).unwrap()),
                 PhysFrame::new(PhysAddr::new(i).unwrap()),
                 PageFlags::V | PageFlags::W | PageFlags::R | PageFlags::X,
-                level_2_page_table,
+                &level_2_page_table,
                 &mut allocator,
             ).unwrap();
         }
 
-        println!("Loading paging");
+       println!("Loading paging");
 
-       level_2_page_table.load_with_phys(PhysAddr::new(p).unwrap(), 0);
-
+       load_with_phys(&level_2_page_table, 0);
+       
        println!("Paging loaded! 1:1 mapping is here");
 
-       core::arch::asm!("j main", in("a0") level_2_page_table, options(noreturn));
+        core::arch::asm!("j main", in("a0") level_2_page_table.start_address(), options(noreturn));
     }
 }
 

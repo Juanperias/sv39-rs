@@ -1,6 +1,6 @@
 use core::{arch::asm, ops::Add};
 
-use crate::{error::Sv39Error, satp::Satp};
+use crate::{error::Sv39Error, page::PhysFrame, satp::Satp};
 
 #[derive(Debug)]
 #[repr(align(4096))]
@@ -23,21 +23,6 @@ impl PageTable {
         self.0.as_mut_ptr()
     }
 
-    pub fn load_with_phys(&self, p_addr: PhysAddr, asid: u16) {
-        let satp = Satp {
-            mode: PagingMode::Sv39,
-            asid,
-            ppn: p_addr.0 >> 12,
-        };
-
-        satp.write_csr();
-
-        unsafe {
-            // TODO(Juanperias): Impl selective sfence.vma
-            asm!("sfence.vma zero, zero");
-        }
-    }
-
     pub fn entry(&self, num: usize) -> Option<&PageTableEntry> {
         self.0.get(num)
     }
@@ -45,6 +30,21 @@ impl PageTable {
     pub fn entry_mut(&mut self, num: usize) -> Option<&mut PageTableEntry> {
         self.0.get_mut(num)
     }
+}
+
+pub fn load_with_phys(p_addr: &PhysFrame, asid: u16) {
+    let satp = Satp {
+        mode: PagingMode::Sv39,
+        asid,
+        ppn: p_addr.start_address() >> 12,
+    };
+
+    satp.write_csr();
+
+    unsafe {
+        // TODO(Juanperias): Impl selective sfence.vma
+        asm!("sfence.vma zero, zero");
+   }
 }
 
 #[repr(transparent)]
