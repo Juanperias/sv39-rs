@@ -180,7 +180,7 @@ impl PhysAddr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct VirtAddr(u64);
 

@@ -2,7 +2,7 @@
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::{error::Sv39Error, page::{Page, PhysFrame, alloc::PhysFrameAllocator}, paging::{PageFlags, PageTable, PhysAddr, VirtAddr}};
+use crate::{error::Sv39Error, page::{Page, PhysFrame, alloc::PhysFrameAllocator}, paging::{PageFlags, PageTable, PhysAddr, VirtAddr}, tlb};
 
 pub trait Mapper {
     fn map_to<T: PhysFrameAllocator>(
@@ -13,7 +13,7 @@ pub trait Mapper {
         flags: PageFlags,
         level_2_table: &PhysFrame,
         allocator: &mut T,
-    ) -> Result<(), Sv39Error>;
+    ) -> Result<TlbFlush, Sv39Error>;
     
     fn umap(
         &self,
@@ -50,7 +50,7 @@ impl Mapper for OffsetMapper {
         flags: PageFlags,
         root_table_phys: &PhysFrame,
         allocator: &mut T,
-    ) -> Result<(), Sv39Error> {
+    ) -> Result<TlbFlush, Sv39Error> {
         let off = self.0.load(Ordering::SeqCst);
         
         let v = page.start_address_virt();
@@ -91,7 +91,7 @@ impl Mapper for OffsetMapper {
         entry_0.set_flags(flags);
         entry_0.set_phys(phys.start_address_phys().clone());
       
-        Ok(())
+        Ok(TlbFlush(v.clone()))
     }
 
     fn umap(
@@ -105,3 +105,16 @@ impl Mapper for OffsetMapper {
     
 }
 
+pub struct TlbFlush(VirtAddr);
+
+impl TlbFlush {
+    pub fn flush(self) {
+        tlb::clear_virt(self.0);
+    }
+
+    pub fn flush_with_asid(self, asid: u16) {
+        tlb::clear_virt_asid(self.0, asid);
+    }
+
+    pub fn ignore(self) {}
+}

@@ -41,7 +41,7 @@ pub extern "C" fn boot() -> ! {
                 PageFlags::V | PageFlags::W | PageFlags::R | PageFlags::X,
                 &level_2_page_table,
                 &mut allocator,
-            ).unwrap();
+            ).unwrap().ignore();
         }
 
        println!("Loading paging");
