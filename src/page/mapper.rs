@@ -13,8 +13,8 @@ pub trait Mapper {
         flags: PageFlags,
         level_2_table: &PhysFrame,
         allocator: &mut T,
-) -> Result<(), Sv39Error>;
-
+    ) -> Result<(), Sv39Error>;
+    
     fn umap(
         &self,
         page: Page,
