@@ -1,6 +1,6 @@
 use core::{arch::asm, ops::Add};
 
-use crate::{error::Sv39Error, page::PhysFrame, satp::Satp};
+use crate::{error::Sv39Error, page::PhysFrame, satp::Satp, tlb};
 
 #[derive(Debug)]
 #[repr(align(4096))]
@@ -32,19 +32,24 @@ impl PageTable {
     }
 }
 
-pub fn load_with_phys(p_addr: &PhysFrame, asid: u16) {
+pub fn load_with_phys(p_addr: &PhysFrame, asid: Option<u16>) {
     let satp = Satp {
         mode: PagingMode::Sv39,
-        asid,
+        asid: asid.unwrap_or(0),
         ppn: p_addr.start_address() >> 12,
     };
 
     satp.write_csr();
 
-    unsafe {
-        // TODO(Juanperias): Impl selective sfence.vma
-        asm!("sfence.vma zero, zero");
-   }
+    match asid {
+        Some(v) => {
+            tlb::clear_asid(v);
+        },
+        None => {
+            tlb::clear_all();
+        },
+    }
+   
 }
 
 #[repr(transparent)]
@@ -131,6 +136,7 @@ impl PageTableEntry {
 }
 
 #[derive(Debug, Clone)]
+#[repr(transparent)]
 pub struct PhysAddr(u64);
 
 impl PhysAddr {
@@ -175,6 +181,7 @@ impl PhysAddr {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct VirtAddr(u64);
 
 impl VirtAddr {

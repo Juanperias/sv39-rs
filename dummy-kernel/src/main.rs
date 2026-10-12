@@ -46,8 +46,8 @@ pub extern "C" fn boot() -> ! {
 
        println!("Loading paging");
 
-       load_with_phys(&level_2_page_table, 0);
-       
+        load_with_phys(&level_2_page_table, None);
+        
        println!("Paging loaded! 1:1 mapping is here");
 
         core::arch::asm!("j main", in("a0") level_2_page_table.start_address(), options(noreturn));

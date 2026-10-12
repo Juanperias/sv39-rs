@@ -16,6 +16,7 @@ pub extern "C" fn clear_asid(asid: u16) {
     );
 }
 
+#[unsafe(naked)]
 pub extern "C" fn clear_virt(v: VirtAddr) {
     core::arch::naked_asm!(
         "sfence.vma a0, zero",
