@@ -1,7 +1,10 @@
 #![no_std]
 #![no_main]
 
-use sv39::{page::{Page, PhysFrame, alloc::PhysFrameAllocator, mapper::Mapper}, paging::{PageFlags, PageTable, PhysAddr, VirtAddr, load_with_phys}};
+use sv39::{
+    page::{Page, PhysFrame, alloc::PhysFrameAllocator, mapper::Mapper},
+    paging::{PageFlags, PageTable, PhysAddr, VirtAddr, load_with_phys},
+};
 
 pub mod alloc;
 
@@ -26,7 +29,7 @@ pub extern "C" fn boot() -> ! {
         core::ptr::write_bytes(bss_start, 0, bss_size);
 
         let mut allocator = alloc::PageAllocator;
-        
+
         let level_2_page_table = allocator.alloc().unwrap();
 
         let kernel_base = (&raw mut __kernel_base) as u64;
@@ -34,27 +37,31 @@ pub extern "C" fn boot() -> ! {
 
         let offset_mapper = sv39::page::mapper::OffsetMapper::identity();
 
-        for i in (kernel_base..heap_end).step_by(4096) {
-            offset_mapper.map_to(
-                Page::new(VirtAddr::new(i).unwrap()),
-                PhysFrame::new(PhysAddr::new(i).unwrap()),
-                PageFlags::V | PageFlags::W | PageFlags::R | PageFlags::X,
+
+        offset_mapper
+            .map_range(
+                Page::new(VirtAddr::new(kernel_base).unwrap()),
+                Page::new(VirtAddr::new(heap_end).unwrap()),
+
+                PhysFrame::new(PhysAddr::new(kernel_base).unwrap()),
+                PhysFrame::new(PhysAddr::new(heap_end).unwrap()),
+                false,
+                PageFlags::X | PageFlags::R | PageFlags::W | PageFlags::V,
                 &level_2_page_table,
                 &mut allocator,
-            ).unwrap().ignore();
-        }
+            ).unwrap();
+        
+ 
 
-       println!("Loading paging");
+        println!("Loading paging");
 
         load_with_phys(&level_2_page_table, None);
-        
-       println!("Paging loaded! 1:1 mapping is here");
+
+        println!("Paging loaded! 1:1 mapping is here");
 
         core::arch::asm!("j main", in("a0") level_2_page_table.start_address(), options(noreturn));
     }
 }
-
-
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main(level_2_page_table: *mut PageTable) {

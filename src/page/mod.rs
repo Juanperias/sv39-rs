@@ -27,7 +27,6 @@ impl Page {
     pub fn start_address(&self) -> u64 {
         self.start_address_virt().addr()
     }
-    
 }
 
 pub struct PhysFrame(PhysAddr);
@@ -36,7 +35,7 @@ impl PhysFrame {
     pub fn new(phys: PhysAddr) -> Self {
         Self(phys)
     }
-    
+
     pub fn start_address_phys(&self) -> &PhysAddr {
         &self.0
     }

@@ -44,12 +44,11 @@ pub fn load_with_phys(p_addr: &PhysFrame, asid: Option<u16>) {
     match asid {
         Some(v) => {
             tlb::clear_asid(v);
-        },
+        }
         None => {
             tlb::clear_all();
-        },
+        }
     }
-   
 }
 
 #[repr(transparent)]
@@ -79,7 +78,7 @@ impl PageTableEntry {
             | (((rsw as u64) & 0x3) << 8)
             | (flags.bits() as u64) & 0xFF;
 
-        PageTableEntry(inner) 
+        PageTableEntry(inner)
     }
 
     pub const fn empty() -> PageTableEntry {
@@ -159,7 +158,7 @@ impl PhysAddr {
     pub const fn addr(&self) -> u64 {
         self.0
     }
-    
+
     pub unsafe fn from_parts(ppn_2: u64, ppn_1: u64, ppn_0: u64, page_offset: u16) -> PhysAddr {
         let inner = (ppn_2 << 30) | (ppn_1 << 21) | (ppn_0 << 12) | ((page_offset as u64) & 0xFFF);
 
