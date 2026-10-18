@@ -22,6 +22,7 @@ One of the simplest examples is the dummy kernel found in the source code, which
             .unwrap();
         println!("Loading paging");
         load_with_phys(&level_2_page_table, None);
+```
 
 ## Resources
 
