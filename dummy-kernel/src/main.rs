@@ -37,21 +37,18 @@ pub extern "C" fn boot() -> ! {
 
         let offset_mapper = sv39::page::mapper::OffsetMapper::identity();
 
-
         offset_mapper
             .map_range(
                 Page::new(VirtAddr::new(kernel_base).unwrap()),
                 Page::new(VirtAddr::new(heap_end).unwrap()),
-
                 PhysFrame::new(PhysAddr::new(kernel_base).unwrap()),
                 PhysFrame::new(PhysAddr::new(heap_end).unwrap()),
                 false,
                 PageFlags::X | PageFlags::R | PageFlags::W | PageFlags::V,
                 &level_2_page_table,
                 &mut allocator,
-            ).unwrap();
-        
- 
+            )
+            .unwrap();
 
         println!("Loading paging");
 

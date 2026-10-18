@@ -160,11 +160,10 @@ impl Mapper for OffsetMapper {
             return Err(Sv39Error::InvalidPte);
         }
 
-         let level_1_page = entry_2.phys_addr().offset(off)?;
+        let level_1_page = entry_2.phys_addr().offset(off)?;
         let level_1_table = unsafe { PageTable::from_ptr(level_1_page.addr() as *mut PageTable) };
 
         let entry_1 = level_1_table.entry(start_v.vpn_1() as usize).unwrap();
-
 
         if !entry_1.is_valid() {
             return Err(Sv39Error::InvalidPte);
@@ -176,7 +175,7 @@ impl Mapper for OffsetMapper {
         let entry_0 = level_0_table.entry_mut(start_v.vpn_0() as usize).unwrap();
 
         *entry_0 = PageTableEntry::empty();
-        
+
         Ok(())
     }
 }
