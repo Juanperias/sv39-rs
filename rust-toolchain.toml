@@ -1,0 +1,4 @@
+[toolchain]
+channel = "stable"
+targets = ["riscv64gc-unknown-none-elf"]
+components = [ "rust-analyzer", "rustfmt", "rust-src", "rustc" ]
