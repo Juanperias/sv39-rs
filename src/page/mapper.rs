@@ -91,6 +91,10 @@ impl Mapper for OffsetMapper {
 
         if !entry_2.is_valid() {
             let p = allocator.alloc().ok_or(Sv39Error::AllocationFailed)?;
+            let table_virt = p.start_address_phys().offset(off)?;
+            unsafe {
+                core::ptr::write_bytes(table_virt.addr() as *mut u8, 0, 4096);
+            }
 
             entry_2.set_flags(PageFlags::V);
             entry_2.set_phys(p.start_address_phys().clone());
@@ -103,6 +107,10 @@ impl Mapper for OffsetMapper {
 
         if !entry_1.is_valid() {
             let p = allocator.alloc().ok_or(Sv39Error::AllocationFailed)?;
+            let table_virt = p.start_address_phys().offset(off)?;
+            unsafe {
+                core::ptr::write_bytes(table_virt.addr() as *mut u8, 0, 4096);
+            }
 
             entry_1.set_flags(PageFlags::V);
             entry_1.set_phys(p.start_address_phys().clone());
@@ -185,6 +193,8 @@ impl Mapper for OffsetMapper {
         let entry_0 = level_0_table.entry_mut(start_v.vpn_0() as usize).unwrap();
 
         *entry_0 = PageTableEntry::empty();
+
+        tlb::clear_virt(start_v.clone());
 
         Ok(())
     }
