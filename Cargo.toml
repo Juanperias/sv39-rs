@@ -2,6 +2,14 @@
 name = "sv39"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-2.0-or-later"
+authors = ["Juanperias"]
+description = "An implementation of sv39 paging system for RISC-V"
+repository = "https://github.com/juanperias/sv39-rs"
+homepage = "https://github.com/juanperias/sv39-rs"
+documentation = "https://docs.rs/sv39"
+readme = "README.md"
+
 
 [workspace]
 members = [ "dummy-kernel" ]
