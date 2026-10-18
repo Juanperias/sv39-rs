@@ -16,6 +16,11 @@ jobs:
         with:
           toolchain: nightly
           targets: riscv64gc-unknown-none-elf
+	  
+       - name: Rustup
+        run: |
+          rustup target add riscv64gc-unknown-none-elf
+          rustup component add rust-src
 
       - name: Publish to crates.io
         uses: katyo/publish-crates@v2
