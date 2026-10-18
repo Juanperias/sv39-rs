@@ -1,5 +1,3 @@
-use core::{arch::asm, ops::Add};
-
 use crate::{error::Sv39Error, page::PhysFrame, satp::Satp, tlb};
 
 /// It represents a PageTable with its 512 entries 
