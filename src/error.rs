@@ -10,4 +10,7 @@ pub enum Sv39Error {
 
     #[error("Allocation failed")]
     AllocationFailed,
+
+    #[error("Invalid Pte")]
+    InvalidPte,
 }

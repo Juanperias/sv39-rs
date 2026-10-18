@@ -5,7 +5,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use crate::{
     error::Sv39Error,
     page::{Page, PhysFrame, alloc::PhysFrameAllocator},
-    paging::{PageFlags, PageTable, PhysAddr, VirtAddr},
+    paging::{PageFlags, PageTable, PageTableEntry, PhysAddr, VirtAddr},
     tlb,
 };
 
@@ -144,7 +144,40 @@ impl Mapper for OffsetMapper {
     }
 
     fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<(), Sv39Error> {
-        todo!()
+        let start_v = page.start_address_virt();
+
+        let off = self.0.load(Ordering::SeqCst);
+
+        let root_table = unsafe {
+            PageTable::from_ptr(
+                (level_2_table.start_address_phys().offset(off)?.addr()) as *mut PageTable,
+            )
+        };
+
+        let entry_2 = root_table.entry(start_v.vpn_2() as usize).unwrap();
+
+        if !entry_2.is_valid() {
+            return Err(Sv39Error::InvalidPte);
+        }
+
+         let level_1_page = entry_2.phys_addr().offset(off)?;
+        let level_1_table = unsafe { PageTable::from_ptr(level_1_page.addr() as *mut PageTable) };
+
+        let entry_1 = level_1_table.entry(start_v.vpn_1() as usize).unwrap();
+
+
+        if !entry_1.is_valid() {
+            return Err(Sv39Error::InvalidPte);
+        }
+
+        let level_0_page = entry_1.phys_addr().offset(off)?;
+        let level_0_table = unsafe { PageTable::from_ptr(level_0_page.addr() as *mut PageTable) };
+
+        let entry_0 = level_0_table.entry_mut(start_v.vpn_0() as usize).unwrap();
+
+        *entry_0 = PageTableEntry::empty();
+        
+        Ok(())
     }
 }
 
