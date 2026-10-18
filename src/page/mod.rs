@@ -5,6 +5,7 @@ pub mod mapper;
 
 // TODO(Juanperias): manage more than 4 KIB pages
 
+/// It represents a virtual frame of 4 kib, or, more formally, a “page”
 pub struct Page(VirtAddr);
 
 impl Page {
@@ -29,6 +30,7 @@ impl Page {
     }
 }
 
+/// It represents a physical frame of 4 kib, or, more formally, a “phys frame”
 pub struct PhysFrame(PhysAddr);
 
 impl PhysFrame {

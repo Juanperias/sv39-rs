@@ -10,6 +10,8 @@ use crate::{
 };
 
 pub trait Mapper {
+    /// Maps a Virtual Page to a Physical Page with Flags
+    /// In most cases, you'll want PageFlags to contain the V flag
     fn map_to<T: PhysFrameAllocator>(
         &self,
         page: Page,
@@ -20,6 +22,8 @@ pub trait Mapper {
         allocator: &mut T,
     ) -> Result<TlbFlush, Sv39Error>;
 
+    /// Maps a Range from a start page to an end page to a range of an start phys frame to an end phys frame
+    /// If flush_tlb is true it will perform a Tlb Flush per map
     fn map_range<T: PhysFrameAllocator>(
         &self,
         start_page: Page,
@@ -33,9 +37,13 @@ pub trait Mapper {
         allocator: &mut T,
     ) -> Result<(), Sv39Error>;
 
+    /// Unmaps a page, IT DOES NOT DEALLOCATE
     fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<(), Sv39Error>;
 }
 
+/// Create a map with an offset
+/// Dev Note: It's a bit ambiguous—basically, to access the PTEs located on pages, you're given the physical address. The problem is that when paging is enabled, it's generally not a VA = PA mapping. If it's a standard kernel, it will be in HHDM; in that case, the offset will be the higher-half offset (If you use limine you can get de higher half offset with a request).
+/// If you’re starting from scratch and paging isn’t enabled, you’ll have to configure it yourself; therefore, the offset will be 0 (which tells the mapper that VA = PA). Once paging is configured, you should change the offset to the higher half (if your kernel is HHDM, which is most likely).
 pub struct OffsetMapper(AtomicUsize);
 
 /// NOTE: Initial Kernel Page setup should be done manually
@@ -46,10 +54,12 @@ impl OffsetMapper {
         Self(AtomicUsize::new(offset))
     }
 
+    /// Creates an offset mapper with offset 0
     pub const fn identity() -> Self {
         Self(AtomicUsize::new(0))
     }
 
+    /// Set offset of a mapper
     pub fn set_offset(&self, offset: usize) {
         self.0.store(offset, Ordering::SeqCst);
     }
@@ -180,16 +190,20 @@ impl Mapper for OffsetMapper {
     }
 }
 
+/// TLB handler; it is obtained after each mapping 
 pub struct TlbFlush(VirtAddr);
 
 impl TlbFlush {
+    /// Flush the specified address WITHOUT ASID
     pub fn flush(self) {
         tlb::clear_virt(self.0);
     }
 
+    /// Flush the specified address with ASID
     pub fn flush_with_asid(self, asid: u16) {
         tlb::clear_virt_asid(self.0, asid);
     }
 
+    /// Nothing....
     pub fn ignore(self) {}
 }
