@@ -38,7 +38,7 @@ pub trait Mapper {
     ) -> Result<(), Sv39Error>;
 
     /// Unmaps a page, IT DOES NOT DEALLOCATE
-    fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<(), Sv39Error>;
+    fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<TlbFlush, Sv39Error>;
 }
 
 /// Create a map with an offset
@@ -161,7 +161,7 @@ impl Mapper for OffsetMapper {
         Ok(())
     }
 
-    fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<(), Sv39Error> {
+    fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<TlbFlush, Sv39Error> {
         let start_v = page.start_address_virt();
 
         let off = self.0.load(Ordering::SeqCst);
@@ -194,9 +194,7 @@ impl Mapper for OffsetMapper {
 
         *entry_0 = PageTableEntry::empty();
 
-        tlb::clear_virt(start_v.clone());
-
-        Ok(())
+        Ok(TlbFlush(start_v.clone()))
     }
 }
 
