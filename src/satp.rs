@@ -1,5 +1,6 @@
 use crate::paging::PagingMode;
 
+#[cfg(target_arch = "riscv64")]
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
 /// Raw read from SATP CSR
@@ -7,12 +8,21 @@ extern "C" fn csrr_satp() -> u64 {
     core::arch::naked_asm!("csrr a0, satp", "ret");
 }
 
+#[cfg(not(target_arch = "riscv64"))]
+extern "C" fn csrr_satp() -> u64 {
+    0
+}
+
+#[cfg(target_arch = "riscv64")]
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
 /// Raw write to SATP CSR
 extern "C" fn csrw_satp(val: u64) {
     core::arch::naked_asm!("csrw satp, a0", "ret",);
 }
+
+#[cfg(not(target_arch = "riscv64"))]
+extern "C" fn csrw_satp(_val: u64) {}
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 /// Wrapper from SATP Csr
