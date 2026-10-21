@@ -59,6 +59,13 @@ fn test_translate_addr_roundtrip() {
         )
         .expect("Mapping succeeded");
 
+    // Page walk should resolve to valid leaf PTE
+    let pte = mapper
+        .page_walk(virt.clone(), &root_frame)
+        .expect("Page walk must succeed");
+    assert!(pte.is_valid(), "PTE must be valid");
+    assert_eq!(pte.phys_addr().addr(), phys.addr());
+
     // Translation should resolve to exactly 0x8020_0000
     let translated = mapper
         .translate_addr(virt.clone(), &root_frame)
@@ -69,10 +76,16 @@ fn test_translate_addr_roundtrip() {
         "Translated physical address must match mapped physical address"
     );
 
-    // After unmapping, translation must fail
-    mapper
+    // After unmapping, translation and page_walk must fail
+    let tlb_flush = mapper
         .umap(Page::new(virt.clone()), &root_frame)
         .expect("Unmapping succeeded");
+    tlb_flush.ignore();
+
+    assert!(
+        mapper.page_walk(virt.clone(), &root_frame).is_err(),
+        "Page walk must fail after unmapping"
+    );
     assert!(
         mapper.translate_addr(virt, &root_frame).is_err(),
         "Translation must fail after unmapping"

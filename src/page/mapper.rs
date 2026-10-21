@@ -40,8 +40,15 @@ pub trait Mapper {
     /// Unmaps a page, IT DOES NOT DEALLOCATE
     fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<TlbFlush, Sv39Error>;
 
-    /// Translates a virtual address to its mapped physical address
-    fn translate_addr(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<PhysAddr, Sv39Error>;
+    /// Walks the 3-level page table and returns a reference to the leaf PageTableEntry
+    fn page_walk<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a PageTableEntry, Sv39Error>;
+
+    /// Translates a virtual address to its mapped physical address using page_walk
+    fn translate_addr(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<PhysAddr, Sv39Error> {
+        let entry = self.page_walk(virt.clone(), level_2_table)?;
+        let base_phys = entry.phys_addr();
+        PhysAddr::new(base_phys.addr() + virt.page_offset())
+    }
 }
 
 /// Create a map with an offset
@@ -200,7 +207,7 @@ impl Mapper for OffsetMapper {
         Ok(TlbFlush(start_v.clone()))
     }
 
-    fn translate_addr(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<PhysAddr, Sv39Error> {
+    fn page_walk<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a PageTableEntry, Sv39Error> {
         let off = self.0.load(Ordering::SeqCst);
 
         let root_table = unsafe {
@@ -230,8 +237,7 @@ impl Mapper for OffsetMapper {
             return Err(Sv39Error::InvalidPte);
         }
 
-        let base_phys = entry_0.phys_addr();
-        PhysAddr::new(base_phys.addr() + virt.page_offset())
+        Ok(entry_0)
     }
 }
 
