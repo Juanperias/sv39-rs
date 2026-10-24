@@ -1,5 +1,7 @@
 # Sv39 Rust Implementation
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23628474.svg)](https://doi.org/10.5281/zenodo.23628474)
+
 Sv39 is one of RISCV's paging systems, with 39-bit virtual addresses and a total address space of 512 GB.
 
 ## Get Started!
