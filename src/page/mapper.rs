@@ -42,13 +42,6 @@ pub trait Mapper {
 
     /// Walks the 3-level page table and returns a reference to the leaf PageTableEntry
     fn page_walk<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a PageTableEntry, Sv39Error>;
-
-    /// Translates a virtual address to its mapped physical address using page_walk
-    fn translate_addr(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<PhysAddr, Sv39Error> {
-        let entry = self.page_walk(virt.clone(), level_2_table)?;
-        let base_phys = entry.phys_addr();
-        PhysAddr::new(base_phys.addr() + virt.page_offset())
-    }
 }
 
 /// Create a map with an offset
