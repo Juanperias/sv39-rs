@@ -38,7 +38,10 @@ pub trait Mapper {
     ) -> Result<(), Sv39Error>;
 
     /// Unmaps a page, IT DOES NOT DEALLOCATE
-    fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<(), Sv39Error>;
+    fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<TlbFlush, Sv39Error>;
+
+    /// Walks the 3-level page table and returns a reference to the leaf PageTableEntry
+    fn page_walk<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a PageTableEntry, Sv39Error>;
 }
 
 /// Create a map with an offset
@@ -91,6 +94,10 @@ impl Mapper for OffsetMapper {
 
         if !entry_2.is_valid() {
             let p = allocator.alloc().ok_or(Sv39Error::AllocationFailed)?;
+            let table_virt = p.start_address_phys().offset(off)?;
+            unsafe {
+                core::ptr::write_bytes(table_virt.addr() as *mut u8, 0, 4096);
+            }
 
             entry_2.set_flags(PageFlags::V);
             entry_2.set_phys(p.start_address_phys().clone());
@@ -103,6 +110,10 @@ impl Mapper for OffsetMapper {
 
         if !entry_1.is_valid() {
             let p = allocator.alloc().ok_or(Sv39Error::AllocationFailed)?;
+            let table_virt = p.start_address_phys().offset(off)?;
+            unsafe {
+                core::ptr::write_bytes(table_virt.addr() as *mut u8, 0, 4096);
+            }
 
             entry_1.set_flags(PageFlags::V);
             entry_1.set_phys(p.start_address_phys().clone());
@@ -153,7 +164,7 @@ impl Mapper for OffsetMapper {
         Ok(())
     }
 
-    fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<(), Sv39Error> {
+    fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<TlbFlush, Sv39Error> {
         let start_v = page.start_address_virt();
 
         let off = self.0.load(Ordering::SeqCst);
@@ -186,7 +197,40 @@ impl Mapper for OffsetMapper {
 
         *entry_0 = PageTableEntry::empty();
 
-        Ok(())
+        Ok(TlbFlush(start_v.clone()))
+    }
+
+    fn page_walk<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a PageTableEntry, Sv39Error> {
+        let off = self.0.load(Ordering::SeqCst);
+
+        let root_table = unsafe {
+            PageTable::from_ptr(
+                (level_2_table.start_address_phys().offset(off)?.addr()) as *mut PageTable,
+            )
+        };
+
+        let entry_2 = root_table.entry(virt.vpn_2() as usize).ok_or(Sv39Error::InvalidPte)?;
+        if !entry_2.is_valid() {
+            return Err(Sv39Error::InvalidPte);
+        }
+
+        let level_1_page = entry_2.phys_addr().offset(off)?;
+        let level_1_table = unsafe { PageTable::from_ptr(level_1_page.addr() as *mut PageTable) };
+
+        let entry_1 = level_1_table.entry(virt.vpn_1() as usize).ok_or(Sv39Error::InvalidPte)?;
+        if !entry_1.is_valid() {
+            return Err(Sv39Error::InvalidPte);
+        }
+
+        let level_0_page = entry_1.phys_addr().offset(off)?;
+        let level_0_table = unsafe { PageTable::from_ptr(level_0_page.addr() as *mut PageTable) };
+
+        let entry_0 = level_0_table.entry(virt.vpn_0() as usize).ok_or(Sv39Error::InvalidPte)?;
+        if !entry_0.is_valid() {
+            return Err(Sv39Error::InvalidPte);
+        }
+
+        Ok(entry_0)
     }
 }
 

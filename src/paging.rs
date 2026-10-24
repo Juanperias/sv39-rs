@@ -193,7 +193,7 @@ impl PhysAddr {
         (self.0 >> 21) & 0x1FF
     }
     pub fn ppn_0(&self) -> u64 {
-        (self.0 >> 9) & 0x1FF
+        (self.0 >> 12) & 0x1FF
     }
     pub fn page_offset(&self) -> u64 {
         self.0 & 0xFFF
