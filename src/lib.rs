@@ -1,4 +1,4 @@
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 
 //! # Sv39 Rust Implementation
 //! Sv39 is one of RISCV's paging systems, with 39-bit virtual addresses and a total address space of 512 GB.
@@ -24,8 +24,8 @@
 //!        load_with_phys(&level_2_page_table, None);
 
 
-#[cfg(not(any(target_arch = "riscv64", target_pointer_width = "64")))]
-compile_error!("SV39 only has support for 64-bit architectures");
+#[cfg(not(target_arch = "riscv64"))]
+compile_error!("SV39 only has support for RISCV-64");
 
 pub mod error;
 pub mod page;
