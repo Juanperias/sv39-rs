@@ -1,6 +1,6 @@
 use crate::{error::Sv39Error, page::PhysFrame, satp::Satp, tlb};
 
-/// It represents a PageTable with its 512 entries 
+/// It represents a PageTable with its 512 entries
 #[derive(Debug)]
 #[repr(align(4096))]
 pub struct PageTable([PageTableEntry; 512]);
@@ -10,7 +10,7 @@ impl PageTable {
     pub const fn empty() -> Self {
         Self([const { PageTableEntry::empty() }; 512])
     }
-    
+
     pub unsafe fn from_ptr<'a>(ptr: *mut PageTable) -> &'a mut PageTable {
         unsafe { &mut *ptr }
     }
@@ -96,7 +96,7 @@ impl PageTableEntry {
 
         self.0 = (self.0 & 0xFFC00000000003FF) | (ppn << 10);
     }
-   
+
     /// Set the PTE flags
     pub fn set_flags(&mut self, flags: PageFlags) {
         let inner = (self.0 & 0xFFFFFFFFFFFFFF00) | (flags.bits() & 0xFF) as u64;

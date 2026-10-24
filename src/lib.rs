@@ -23,7 +23,6 @@
 //!        println!("Loading paging");
 //!        load_with_phys(&level_2_page_table, None);
 
-
 #[cfg(not(target_arch = "riscv64"))]
 compile_error!("SV39 only has support for RISCV-64");
 

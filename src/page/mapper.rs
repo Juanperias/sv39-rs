@@ -41,10 +41,18 @@ pub trait Mapper {
     fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<TlbFlush, Sv39Error>;
 
     /// Walks the 3-level page table and returns a mutable reference to the leaf PageTableEntry
-    fn page_walk_mut<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a mut PageTableEntry, Sv39Error>;
-    
+    fn page_walk_mut<'a>(
+        &self,
+        virt: VirtAddr,
+        level_2_table: &PhysFrame,
+    ) -> Result<&'a mut PageTableEntry, Sv39Error>;
+
     /// Walks the 3-level page table and returns a reference to the leaf PageTableEntry
-    fn page_walk<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a PageTableEntry, Sv39Error>;
+    fn page_walk<'a>(
+        &self,
+        virt: VirtAddr,
+        level_2_table: &PhysFrame,
+    ) -> Result<&'a PageTableEntry, Sv39Error>;
 }
 
 /// Create a map with an offset
@@ -203,7 +211,11 @@ impl Mapper for OffsetMapper {
         Ok(TlbFlush(start_v.clone()))
     }
 
-    fn page_walk<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a PageTableEntry, Sv39Error> {
+    fn page_walk<'a>(
+        &self,
+        virt: VirtAddr,
+        level_2_table: &PhysFrame,
+    ) -> Result<&'a PageTableEntry, Sv39Error> {
         let off = self.0.load(Ordering::SeqCst);
 
         let root_table = unsafe {
@@ -212,7 +224,9 @@ impl Mapper for OffsetMapper {
             )
         };
 
-        let entry_2 = root_table.entry(virt.vpn_2() as usize).ok_or(Sv39Error::InvalidPte)?;
+        let entry_2 = root_table
+            .entry(virt.vpn_2() as usize)
+            .ok_or(Sv39Error::InvalidPte)?;
         if !entry_2.is_valid() {
             return Err(Sv39Error::InvalidPte);
         }
@@ -220,7 +234,9 @@ impl Mapper for OffsetMapper {
         let level_1_page = entry_2.phys_addr().offset(off)?;
         let level_1_table = unsafe { PageTable::from_ptr(level_1_page.addr() as *mut PageTable) };
 
-        let entry_1 = level_1_table.entry(virt.vpn_1() as usize).ok_or(Sv39Error::InvalidPte)?;
+        let entry_1 = level_1_table
+            .entry(virt.vpn_1() as usize)
+            .ok_or(Sv39Error::InvalidPte)?;
 
         if !entry_1.is_valid() {
             return Err(Sv39Error::InvalidPte);
@@ -229,8 +245,10 @@ impl Mapper for OffsetMapper {
         let level_0_page = entry_1.phys_addr().offset(off)?;
         let level_0_table = unsafe { PageTable::from_ptr(level_0_page.addr() as *mut PageTable) };
 
-        let entry_0 = level_0_table.entry(virt.vpn_0() as usize).ok_or(Sv39Error::InvalidPte)?;
-        
+        let entry_0 = level_0_table
+            .entry(virt.vpn_0() as usize)
+            .ok_or(Sv39Error::InvalidPte)?;
+
         if !entry_0.is_valid() {
             return Err(Sv39Error::InvalidPte);
         }
@@ -238,8 +256,11 @@ impl Mapper for OffsetMapper {
         Ok(entry_0)
     }
 
-    
-    fn page_walk_mut<'a>(&self, virt: VirtAddr, level_2_table: &PhysFrame) -> Result<&'a mut PageTableEntry, Sv39Error> {
+    fn page_walk_mut<'a>(
+        &self,
+        virt: VirtAddr,
+        level_2_table: &PhysFrame,
+    ) -> Result<&'a mut PageTableEntry, Sv39Error> {
         let off = self.0.load(Ordering::SeqCst);
 
         let root_table = unsafe {
@@ -248,7 +269,9 @@ impl Mapper for OffsetMapper {
             )
         };
 
-        let entry_2 = root_table.entry(virt.vpn_2() as usize).ok_or(Sv39Error::InvalidPte)?;
+        let entry_2 = root_table
+            .entry(virt.vpn_2() as usize)
+            .ok_or(Sv39Error::InvalidPte)?;
 
         if !entry_2.is_valid() {
             return Err(Sv39Error::InvalidPte);
@@ -257,7 +280,9 @@ impl Mapper for OffsetMapper {
         let level_1_page = entry_2.phys_addr().offset(off)?;
         let level_1_table = unsafe { PageTable::from_ptr(level_1_page.addr() as *mut PageTable) };
 
-        let entry_1 = level_1_table.entry(virt.vpn_1() as usize).ok_or(Sv39Error::InvalidPte)?;
+        let entry_1 = level_1_table
+            .entry(virt.vpn_1() as usize)
+            .ok_or(Sv39Error::InvalidPte)?;
 
         if !entry_1.is_valid() {
             return Err(Sv39Error::InvalidPte);
@@ -266,8 +291,10 @@ impl Mapper for OffsetMapper {
         let level_0_page = entry_1.phys_addr().offset(off)?;
         let level_0_table = unsafe { PageTable::from_ptr(level_0_page.addr() as *mut PageTable) };
 
-        let entry_0 = level_0_table.entry_mut(virt.vpn_0() as usize).ok_or(Sv39Error::InvalidPte)?;
-        
+        let entry_0 = level_0_table
+            .entry_mut(virt.vpn_0() as usize)
+            .ok_or(Sv39Error::InvalidPte)?;
+
         if !entry_0.is_valid() {
             return Err(Sv39Error::InvalidPte);
         }
@@ -276,7 +303,7 @@ impl Mapper for OffsetMapper {
     }
 }
 
-/// TLB handler; it is obtained after each mapping 
+/// TLB handler; it is obtained after each mapping
 pub struct TlbFlush(VirtAddr);
 
 impl TlbFlush {
