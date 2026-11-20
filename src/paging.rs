@@ -1,20 +1,24 @@
 use crate::{error::Sv39Error, page::PhysFrame, satp::Satp, tlb};
 
-/// It represents a PageTable with its 512 entries
+/// It represents a `PageTable` with its 512 entries
 #[derive(Debug)]
 #[repr(align(4096))]
 pub struct PageTable([PageTableEntry; 512]);
 
 impl PageTable {
     /// Creates an empty (zeroed) page table
+    #[must_use]
     pub const fn empty() -> Self {
         Self([const { PageTableEntry::empty() }; 512])
     }
 
+    /// # Safety
+    /// Pointer can be null or invalid
     pub unsafe fn from_ptr<'a>(ptr: *mut PageTable) -> &'a mut PageTable {
         unsafe { &mut *ptr }
     }
 
+    #[must_use]
     pub const fn as_ptr(&self) -> *const PageTableEntry {
         self.0.as_ptr()
     }
@@ -23,6 +27,7 @@ impl PageTable {
         self.0.as_mut_ptr()
     }
 
+    #[must_use]
     pub fn entry(&self, num: usize) -> Option<&PageTableEntry> {
         self.0.get(num)
     }
@@ -60,32 +65,35 @@ pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
     /// Creates a new PTE without extensions (bits 63-61 zeroed)
+    #[must_use]
     pub fn new(phys: PhysAddr, rsw: u8, flags: PageFlags) -> PageTableEntry {
         let inner = (phys.ppn_2() << 28)
             | (phys.ppn_1() << 19)
             | (phys.ppn_0() << 10)
-            | (((rsw as u64) & 0x3) << 8)
-            | (flags.bits() as u64) & 0xFF;
+            | ((u64::from(rsw) & 0x3) << 8)
+            | u64::from(flags.bits()) & 0xFF;
 
         PageTableEntry(inner)
     }
 
     /// Creates a new PTE with extensions
+    #[must_use]
     pub fn with_ext(ext: Ext, phys: PhysAddr, rsw: u8, flags: PageFlags) -> PageTableEntry {
-        let napot = (ext.napot & 1) as u64;
-        let pbmt = (ext.pbmt & 3) as u64;
+        let napot = u64::from(ext.napot & 1);
+        let pbmt = u64::from(ext.pbmt & 3);
 
         let inner = napot << 63
             | pbmt << 61
             | (phys.ppn_2() << 28)
             | (phys.ppn_1() << 19)
             | (phys.ppn_0() << 10)
-            | (((rsw as u64) & 0x3) << 8)
-            | (flags.bits() as u64) & 0xFF;
+            | ((u64::from(rsw) & 0x3) << 8)
+            | u64::from(flags.bits()) & 0xFF;
 
         PageTableEntry(inner)
     }
 
+    #[must_use]
     pub const fn empty() -> PageTableEntry {
         PageTableEntry(0)
     }
@@ -94,17 +102,18 @@ impl PageTableEntry {
     pub fn set_phys(&mut self, addr: PhysAddr) {
         let ppn = addr.0 >> 12;
 
-        self.0 = (self.0 & 0xFFC00000000003FF) | (ppn << 10);
+        self.0 = (self.0 & 0xFFC0_0000_0000_03FF) | (ppn << 10);
     }
 
     /// Set the PTE flags
     pub fn set_flags(&mut self, flags: PageFlags) {
-        let inner = (self.0 & 0xFFFFFFFFFFFFFF00) | (flags.bits() & 0xFF) as u64;
+        let inner = (self.0 & 0xFFFF_FFFF_FFFF_FF00) | u64::from(flags.bits());
 
         self.0 = inner;
     }
 
     /// Get extension from PTE
+    #[must_use]
     pub fn ext(&self) -> Ext {
         let napot = (self.0 >> 63) & 1;
 
@@ -117,36 +126,43 @@ impl PageTableEntry {
     }
 
     /// Get physical address from PTE
+    #[must_use]
     pub fn phys_addr(&self) -> PhysAddr {
         unsafe { PhysAddr::from_parts(self.ppn_2(), self.ppn_1(), self.ppn_0(), 0) }
     }
 
     /// Get Physical Page Number 2
+    #[must_use]
     pub fn ppn_2(&self) -> u64 {
-        (self.0 >> 28) & 0x3FFFFFF
+        (self.0 >> 28) & 0x03FF_FFFF
     }
 
     /// Get Physical Page Number 1
+    #[must_use]
     pub fn ppn_1(&self) -> u64 {
         (self.0 >> 19) & 0x1FF
     }
 
     /// Get Physical Page Number 0
+    #[must_use]
     pub fn ppn_0(&self) -> u64 {
         (self.0 >> 10) & 0x1FF
     }
 
     /// Reserved For Software (The Kernel, Cowboy)
+    #[must_use]
     pub fn rsw(&self) -> u8 {
         ((self.0 >> 8) & 3) as u8
     }
 
     /// Check if page contains V flag
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.flags().contains(PageFlags::V)
     }
 
-    /// Get PageFlags
+    /// Get `PageFlags`
+    #[must_use]
     pub fn flags(&self) -> PageFlags {
         let flags = ((self.0) & 0xFF) as u8;
 
@@ -154,7 +170,7 @@ impl PageTableEntry {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 /// Physical Address representation, for more information  visit <https://docs.riscv.org/reference/isa/v20260120/priv/supervisor.html#sv39> Figure 21
 pub struct PhysAddr(u64);
@@ -168,6 +184,9 @@ impl PhysAddr {
         Ok(PhysAddr(addr))
     }
 
+    #[must_use]
+    /// # Safety
+    /// Address can be misaligned
     pub unsafe fn new_unchecked(addr: u64) -> PhysAddr {
         PhysAddr(addr)
     }
@@ -176,25 +195,32 @@ impl PhysAddr {
         Self::new(self.0 + (offset as u64))
     }
 
+    #[must_use]
     pub const fn addr(&self) -> u64 {
         self.0
     }
 
+    #[must_use]
     pub unsafe fn from_parts(ppn_2: u64, ppn_1: u64, ppn_0: u64, page_offset: u16) -> PhysAddr {
-        let inner = (ppn_2 << 30) | (ppn_1 << 21) | (ppn_0 << 12) | ((page_offset as u64) & 0xFFF);
+        let inner =
+            (ppn_2 << 30) | (ppn_1 << 21) | (ppn_0 << 12) | (u64::from(page_offset) & 0xFFF);
 
         PhysAddr(inner)
     }
 
+    #[must_use]
     pub fn ppn_2(&self) -> u64 {
-        (self.0 >> 30) & 0x3FFFFFF
+        (self.0 >> 30) & 0x03FF_FFFF
     }
+    #[must_use]
     pub fn ppn_1(&self) -> u64 {
         (self.0 >> 21) & 0x1FF
     }
+    #[must_use]
     pub fn ppn_0(&self) -> u64 {
         (self.0 >> 12) & 0x1FF
     }
+    #[must_use]
     pub fn page_offset(&self) -> u64 {
         self.0 & 0xFFF
     }
@@ -211,13 +237,16 @@ impl VirtAddr {
             return Err(Sv39Error::MisalignedAddr(addr));
         }
 
-        if (((addr as i64) << 25) >> 25) != addr as i64 {
+        if (((addr.cast_signed()) << 25) >> 25) != addr.cast_signed() {
             return Err(Sv39Error::InvalidAddr(addr));
         }
 
         Ok(Self(addr))
     }
 
+    #[must_use]
+    /// # Safety
+    /// Address can be misaligned or with bad sign extension
     pub unsafe fn new_unchecked(addr: u64) -> Self {
         Self(addr)
     }
@@ -226,32 +255,37 @@ impl VirtAddr {
         Self::new(self.0 + (offset as u64))
     }
 
+    #[must_use]
     pub const fn addr(&self) -> u64 {
         self.0
     }
 
     /// Virtual Page Number 2
+    #[must_use]
     pub fn vpn_2(&self) -> u64 {
         (self.0 >> 30) & 0x1FF
     }
 
     /// Virtual Page Number 1
+    #[must_use]
     pub fn vpn_1(&self) -> u64 {
         (self.0 >> 21) & 0x1FF
     }
 
     /// Virtual Page Number 0
+    #[must_use]
     pub fn vpn_0(&self) -> u64 {
         (self.0 >> 12) & 0x1FF
     }
 
     /// Page Offset from 0-4096
+    #[must_use]
     pub fn page_offset(&self) -> u64 {
         self.0 & 0xFFF
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 /// Page Extensions, for more information visit: <https://docs.riscv.org/reference/isa/v20260120/priv/supervisor.html#svnapot> and <https://docs.riscv.org/reference/isa/v20260120/priv/supervisor.html#svpbmt>
 pub struct Ext {
     napot: u8,
@@ -298,9 +332,9 @@ impl From<u8> for PagingMode {
     }
 }
 
-impl Into<u8> for PagingMode {
-    fn into(self) -> u8 {
-        match self {
+impl From<PagingMode> for u8 {
+    fn from(val: PagingMode) -> Self {
+        match val {
             PagingMode::Bare => 0,
             PagingMode::Sv39 => 8,
             PagingMode::Unk(v) => v,

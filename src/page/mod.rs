@@ -9,22 +9,27 @@ pub mod mapper;
 pub struct Page(VirtAddr);
 
 impl Page {
+    #[must_use]
     pub fn new(addr: VirtAddr) -> Self {
         Self(addr)
     }
 
+    #[must_use]
     pub fn as_mut_ptr(&self) -> *mut u8 {
         self.0.addr() as *mut u8
     }
 
+    #[must_use]
     pub fn as_ptr(&self) -> *const u8 {
         self.0.addr() as *const u8
     }
 
+    #[must_use]
     pub fn start_address_virt(&self) -> &VirtAddr {
         &self.0
     }
 
+    #[must_use]
     pub fn start_address(&self) -> u64 {
         self.start_address_virt().addr()
     }
@@ -34,14 +39,17 @@ impl Page {
 pub struct PhysFrame(PhysAddr);
 
 impl PhysFrame {
+    #[must_use]
     pub fn new(phys: PhysAddr) -> Self {
         Self(phys)
     }
 
+    #[must_use]
     pub fn start_address_phys(&self) -> &PhysAddr {
         &self.0
     }
 
+    #[must_use]
     pub fn start_address(&self) -> u64 {
         self.start_address_phys().addr()
     }

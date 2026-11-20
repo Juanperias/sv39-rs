@@ -28,12 +28,13 @@ pub struct Satp {
 }
 
 impl Satp {
+    #[must_use]
     pub fn read() -> Self {
         let satp = csrr_satp();
 
         let mode = (satp >> 60) & 0xF;
         let asid = (satp >> 44) & 0xFFFF;
-        let ppn = satp & 0xFFFFFFFFFFF;
+        let ppn = satp & 0x0FFF_FFFF_FFFF;
 
         Self {
             mode: PagingMode::from(mode as u8),
@@ -42,16 +43,14 @@ impl Satp {
         }
     }
 
-    /// Encodes to a u64 (you can write by yourself using csrw_satp or .write_csr)
+    /// Encodes to a u64 (you can write by yourself using `csrw_satp` or `write_csr`)
+    #[must_use]
     pub fn encode(&self) -> u64 {
         let mode: u8 = self.mode.clone().into();
 
-        let mode = mode as u64;
+        let mode = u64::from(mode);
 
-        let satp =
-            ((mode & 0xF) << 60) | (((self.asid as u64) & 0xFFFF) << 44) | self.ppn & 0xFFFFFFFFFFF;
-
-        satp
+        ((mode & 0xF) << 60) | ((u64::from(self.asid) & 0xFFFF) << 44) | self.ppn & 0x0FFF_FFFF_FFFF
     }
 
     /// Writes a Satp to the CSR

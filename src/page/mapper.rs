@@ -11,7 +11,7 @@ use crate::{
 
 pub trait Mapper {
     /// Maps a Virtual Page to a Physical Page with Flags
-    /// In most cases, you'll want PageFlags to contain the V flag
+    /// In most cases, you'll want `PageFlags` to contain the V flag
     fn map_to<T: PhysFrameAllocator>(
         &self,
         page: Page,
@@ -23,7 +23,8 @@ pub trait Mapper {
     ) -> Result<TlbFlush, Sv39Error>;
 
     /// Maps a Range from a start page to an end page to a range of an start phys frame to an end phys frame
-    /// If flush_tlb is true it will perform a Tlb Flush per map
+    /// If `flush_tlb` is true it will perform a Tlb Flush per map
+    #[allow(clippy::too_many_arguments)]
     fn map_range<T: PhysFrameAllocator>(
         &self,
         start_page: Page,
@@ -40,14 +41,14 @@ pub trait Mapper {
     /// Unmaps a page, IT DOES NOT DEALLOCATE
     fn umap(&self, page: Page, level_2_table: &PhysFrame) -> Result<TlbFlush, Sv39Error>;
 
-    /// Walks the 3-level page table and returns a mutable reference to the leaf PageTableEntry
+    /// Walks the 3-level page table and returns a mutable reference to the leaf `PageTableEntry`
     fn page_walk_mut<'a>(
         &self,
         virt: VirtAddr,
         level_2_table: &PhysFrame,
     ) -> Result<&'a mut PageTableEntry, Sv39Error>;
 
-    /// Walks the 3-level page table and returns a reference to the leaf PageTableEntry
+    /// Walks the 3-level page table and returns a reference to the leaf `PageTableEntry`
     fn page_walk<'a>(
         &self,
         virt: VirtAddr,
@@ -61,14 +62,16 @@ pub trait Mapper {
 pub struct OffsetMapper(AtomicUsize);
 
 /// NOTE: Initial Kernel Page setup should be done manually
-/// But it isn't to hard  just make a OffsetMapper with offset 0
+/// But it isn't to hard  just make a `OffsetMapper` with offset 0
 /// Map your kernel in HHDM and change de offset to HHDM
 impl OffsetMapper {
+    #[must_use]
     pub const fn new(offset: usize) -> Self {
         Self(AtomicUsize::new(offset))
     }
 
     /// Creates an offset mapper with offset 0
+    #[must_use]
     pub const fn identity() -> Self {
         Self(AtomicUsize::new(0))
     }
@@ -79,6 +82,7 @@ impl OffsetMapper {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 impl Mapper for OffsetMapper {
     fn map_to<T: PhysFrameAllocator>(
         &self,
@@ -111,7 +115,7 @@ impl Mapper for OffsetMapper {
             }
 
             entry_2.set_flags(PageFlags::V);
-            entry_2.set_phys(p.start_address_phys().clone());
+            entry_2.set_phys(*p.start_address_phys());
         }
 
         let level_1_page = entry_2.phys_addr().offset(off)?;
@@ -127,7 +131,7 @@ impl Mapper for OffsetMapper {
             }
 
             entry_1.set_flags(PageFlags::V);
-            entry_1.set_phys(p.start_address_phys().clone());
+            entry_1.set_phys(*p.start_address_phys());
         }
 
         let level_0_page = entry_1.phys_addr().offset(off)?;
@@ -136,11 +140,12 @@ impl Mapper for OffsetMapper {
         let entry_0 = level_0_table.entry_mut(v.vpn_0() as usize).unwrap();
 
         entry_0.set_flags(flags);
-        entry_0.set_phys(phys.start_address_phys().clone());
+        entry_0.set_phys(*phys.start_address_phys());
 
         Ok(TlbFlush(v.clone()))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn map_range<T: PhysFrameAllocator>(
         &self,
         start_page: Page,
@@ -168,7 +173,7 @@ impl Mapper for OffsetMapper {
             )?;
 
             if flush_tlb {
-                tlb.flush()
+                tlb.flush();
             }
         }
 
